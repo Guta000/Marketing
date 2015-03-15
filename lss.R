@@ -1,74 +1,65 @@
 data = read.table("lss.csv", header = TRUE, sep = ";")
-
-data$X = NULL 
-data$X.1 = NULL 
-data$X.2 = NULL 
-data$X.3 = NULL 
-data$X.4 = NULL 
-data$X.5 = NULL 
-data$X.6 = NULL 
-data$X.7 = NULL 
-
-
-#fake for test
-data = data.frame(factor(sample(c(0,1), 300, replace = TRUE)))
-names(data) = c("Name")
-data$why1 = factor(sample(c(0,1), 300, replace = TRUE))
-data$why2 = factor(sample(c(0,1), 300, replace = TRUE))
-data$why3 = factor(sample(c(0,1), 300, replace = TRUE))
-data$why4 = factor(sample(c(0,1), 300, replace = TRUE))
-
-data$reason1 = factor(sample(c(0,1), 300, replace = TRUE))
-data$reason2 = factor(sample(c(0,1), 300, replace = TRUE))
-data$reason3 = factor(sample(c(0,1), 300, replace = TRUE))
-
-data$wholive = factor(sample(c("дети","семья","на сдачу"), 300, replace = TRUE))
-
-data$decisionMaker = factor(sample(c("вместе","мама","собственник"),300, replace = TRUE))
-
-
 summary(data)
 
-library(mclust)
+subsetData = data[-which(names(data) %in% c("Age", "Data", "object","agency","why","reason","source","comments","promo","know.from","payment"))]
 
-fit <- Mclust(data)
+outdoorSubset = subsetData[complete.cases(subsetData$outdoor),]
+summary(outdoorSubset)
 
-classif = fit$classification # classifn vector
-fit
-mydata1 = cbind(data, classif) # append to dataset
-mydata1[1:10,] #view top 10 rows
-fit1=cbind(classif)
-rownames(fit1)=rownames(data)
-library(cluster)
-clusplot(data, fit1, color=TRUE, shade=TRUE,labels=2, lines=0)
+pie(table(subsetData$age_type))
+pie(table(subsetData$Sex))
+pie(table(subsetData$who.live))
+pie(table(subsetData$decision))
+barplot(table(subsetData$flat),col=c("darkblue","red", "green", "yellow"))
 
-table(classif)
+counts <- table(subsetData$flat,subsetData$age_type)
+barplot(counts, col=c("darkblue","red", "green", "yellow"), legend = rownames(counts), beside=TRUE)
 
-mydata1[mydata1$classif == 1,]
+reasons = c(sum(!is.na(subsetData$location)),
+            sum(!is.na(subsetData$price)),
+            sum(!is.na(subsetData$low.rise)),
+            sum(!is.na(subsetData$layout)),
+            sum(!is.na(subsetData$infrastructure)),
+            sum(!is.na(subsetData$philosophy)))
+
+barplot(reasons, col=c("darkblue","red", "green", "yellow","lightblue", "mistyrose"),axisnames = TRUE,  
+        names.arg = c("Расположение","Цена", "Малоэтажность", "Планировки","Инфраструктура", "Философия"), beside=TRUE)
+
+sourses = c(sum(!is.na(subsetData$location)),
+            sum(!is.na(subsetData$price)),
+            sum(!is.na(subsetData$low.rise)),
+            sum(!is.na(subsetData$layout)),
+            sum(!is.na(subsetData$infrastructure)),
+            sum(!is.na(subsetData$philosophy)))
+
+barplot(sourses, col=c("darkblue","red", "green", "yellow","lightblue", "mistyrose"),axisnames = TRUE,  
+        names.arg = c("Расположение","Цена", "Малоэтажность", "Планировки","Инфраструктура", "Философия"), beside=TRUE)
 
 
-transactions = as(data, "transactions");
+library(arules)
+
+transactions = as(subsetData, "transactions");
+
+fsets <- eclat(subsetData, parameter = list(supp = 0.3, minlen = 2))
+inspect(fsets)
+
+fsets <- eclat(subsetData, parameter = list(supp = 0.2,minlen = 3))
+inspect(fsets)
+
+fsets <- eclat(subsetData, parameter = list(supp = 0.1,minlen = 4))
+inspect(fsets)
 
 
-image(transactions)
+rules = apriori(transactions, parameter=list(support=0.2, confidence=0.5, target = "rules"))
 
-rules = apriori(transactions, parameter=list(support=0.1, confidence=0.5))
+inspect(rules)
+
+library(arulesViz)
+
+disp_rules = rules[43:51]
+
+plot(disp_rules)
+plot(disp_rules, method="graph", control=list(type="items"))
 
 
-trans = ""
 
-for(i in ncol(data)){
-  is.text = nlevels(data[[i]]) > 2
-  t = ""
-  for(j in nrow(data)){
-    tmp = t
-    if(is.text){
-      t = paste(tmp,data[j,i], sep=",")
-    }else{
-      t = paste(tmp,names(data[i]), sep=",")
-    }
-  }
-  
-  tmp = trans
-  trans = paste(tmp, t, sep ="\n")
-}
